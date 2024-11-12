@@ -1,4 +1,4 @@
-# Data Security GitHub Actions Example
+# Database Security GitHub Actions Example
 
 This directory demonstrates how to use Bytebase API and GitHub Actions to configure data security related features.
 You can refer this example to build a GitOps solution to codify all data security policies.
