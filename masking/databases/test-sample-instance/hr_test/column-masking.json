@@ -1,0 +1,18 @@
+{
+  "inheritFromParent": false,
+  "type": "MASKING",
+  "maskingPolicy": {
+    "maskData": [
+      {
+        "schema": "public",
+        "table": "salary",
+        "column": "amount",
+        "maskingLevel": "FULL",
+        "fullMaskingAlgorithmId": "",
+        "partialMaskingAlgorithmId": ""
+      }
+    ]
+  },
+  "enforce": true,
+  "resourceType": "DATABASE"
+}
