@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  hello-world:
+  bytebase-masking:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
