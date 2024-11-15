@@ -1,14 +1,14 @@
 name: Bytebase Masking Policy Update
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [closed]
     branches:
       - main
-      - develop
   workflow_dispatch:
 
 jobs:
   bytebase-masking:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
