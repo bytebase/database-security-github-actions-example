@@ -1,4 +1,4 @@
-name: Hello World Action
+name: Bytebase Masking Policy Update
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -6,11 +6,6 @@ on:
       - main
       - develop
   workflow_dispatch:
-    inputs:
-      name:
-        description: "Who to greet"
-        required: true
-        default: "World"
 
 jobs:
   hello-world:
