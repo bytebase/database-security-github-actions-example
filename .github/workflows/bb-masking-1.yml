@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  bytebase-masking:
+  bytebase-masking-1:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
