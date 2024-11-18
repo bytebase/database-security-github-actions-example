@@ -5,7 +5,7 @@
     "maskingExceptions": [
       {
         "action": "EXPORT",
-        "maskingLevel": "PARTIAL",
+        "maskingLevel": "NONE",
         "member": "user:dev@x.com",
         "condition": {
           "expression": "resource.instance_id == \"prod-sample-instance\" && resource.database_name == \"hr_prod\" && resource.schema_name == \"public\" && resource.table_name == \"salary\" && resource.column_name == \"amount\"",
