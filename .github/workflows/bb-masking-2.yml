@@ -76,7 +76,7 @@ jobs:
             echo "Response body: $body"
             
             # Append to outputs (with unique identifiers)
-            echo "status_code=${status_code}" >> $GITHUB_OUTPUT
+            echo "status_code=${status_code}<<EOF" >> $GITHUB_OUTPUT
             echo "${body}" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
             
