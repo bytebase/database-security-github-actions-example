@@ -77,8 +77,7 @@ jobs:
             
             # Append to outputs (with unique identifiers)
             echo "status_code=${status_code}" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            echo "${body}" >> $GITHUB_OUTPUT
+            echo $body >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
             
             if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
