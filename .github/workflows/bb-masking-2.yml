@@ -60,31 +60,27 @@ jobs:
         id: apply-masking-algorithm
         if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, 'masking-algorithm.json') }}
         run: |
-          # Process all masking-algorithm.json files
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "masking-algorithm.json" | while read -r CHANGED_FILE; do
-            echo "Processing: $CHANGED_FILE"
-            
-            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.masking-algorithm?allow_missing=true" \
-              --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
-              --header "Content-Type: application/json" \
-              --data @"$CHANGED_FILE")
+          CHANGED_FILE="masking/masking-algorithm.json"
+          echo "Processing: $CHANGED_FILE"
+          
+          response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.masking-algorithm?allow_missing=true" \
+            --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+            --header "Content-Type: application/json" \
+            --data @"$CHANGED_FILE")
 
-            # Extract status code and response body
-            status_code=$(echo "$response" | tail -n1)
-            body=$(echo "$response" | sed '$d')
-            echo "Status code: $status_code"
-            echo "Response body: $body"
-            
-            # Append to outputs (with unique identifiers)
-            echo "status_code=${status_code}" >> $GITHUB_OUTPUT
-            echo $body >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            
-            if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
-              echo "Failed with status code: $status_code"
-              exit 1
-            fi
-          done
+          # Extract status code and response body
+          status_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "status_code=${status_code}" >> $GITHUB_OUTPUT
+          echo "response_body<<EOF" >> $GITHUB_OUTPUT
+          echo "${body}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
+            echo "Failed with status code: $status_code"
+            exit 1
+          fi
 
       - name: Apply semantic type
         id: apply-semantic-type
@@ -142,18 +138,12 @@ jobs:
             let apiCallsFound = false;
 
             if (changedFiles.includes('masking-algorithm.json')) {
-              const maskingStatuses = Object.keys(${{ toJSON(steps.apply-masking-algorithm.outputs) }} || {})
-                .filter(key => key.startsWith('status_code_'))
-                .map(key => ({
-                  name: key.replace('status_code_', ''),
-                  status: ${{ toJSON(steps.apply-masking-algorithm.outputs) }}[key]
-                }));
-              
-              maskingStatuses.forEach(({name, status}) => {
+              const status = ${{ toJSON(steps.apply-masking-algorithm.outputs) }}.status_code;
+              if (status) {
                 apiCallsFound = true;
                 const success = status >= 200 && status < 300;
-                commentBody += `- Column Masking (${name}): ${success ? '✅' : '❌'} ${status}\n`;
-              });
+                commentBody += `- Column Masking: ${success ? '✅' : '❌'} ${status}\n`;
+              }
             }
 
             if (changedFiles.includes('semantic-type.json')) {
