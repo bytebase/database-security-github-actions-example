@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
       - name: Login Bytebase
         id: bytebase-login
@@ -33,6 +36,8 @@ jobs:
           files: |
             masking/masking-algorithm.json
             masking/semantic-type.json
+          base_sha: ${{ github.event.pull_request.base.sha }}
+          sha: ${{ github.event.pull_request.head.sha }}
           since_last_remote_commit: true
           fetch_depth: 0
           include_all_old_new_renamed_files: true
