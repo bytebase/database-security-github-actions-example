@@ -33,11 +33,18 @@ jobs:
           files: |
             masking/databases/**/**/column-masking.json
             masking/projects/**/masking-exception.json
+          since_last_remote_commit: true
+          fetch_depth: 0
+          include_all_old_new_renamed_files: true
 
       - name: Debug changed files in detail
         run: |
           echo "All changed files:"
           echo "${{ steps.changed-files.outputs.all_changed_files }}"
+          echo "Added files:"
+          echo "${{ steps.changed-files.outputs.added_files }}"
+          echo "Modified files:"
+          echo "${{ steps.changed-files.outputs.modified_files }}"
           echo "Contains column-masking.json: ${{ contains(steps.changed-files.outputs.all_changed_files, 'column-masking.json') }}"
           echo "Contains masking-exception.json: ${{ contains(steps.changed-files.outputs.all_changed_files, 'masking-exception.json') }}"
           echo "Raw output:"

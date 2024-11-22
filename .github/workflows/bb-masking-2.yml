@@ -33,6 +33,16 @@ jobs:
           files: |
             masking/masking-algorithm.json
             masking/semantic-type.json
+          since_last_remote_commit: true
+          fetch_depth: 0
+          include_all_old_new_renamed_files: true
+
+      - name: Debug changed files
+        run: |
+          echo "All changed and added files:"
+          echo "Modified files: ${{ steps.changed-files.outputs.modified_files }}"
+          echo "Added files: ${{ steps.changed-files.outputs.added_files }}"
+          echo "All changes: ${{ steps.changed-files.outputs.all_changed_files }}"
 
       - name: Debug changed files in detail
         run: |
