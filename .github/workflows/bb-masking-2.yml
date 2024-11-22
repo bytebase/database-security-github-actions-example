@@ -1,0 +1,169 @@
+name: Bytebase Masking Policy Update 2
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  bytebase-masking-2:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login Bytebase
+        id: bytebase-login
+        uses: bytebase/login-action@0.0.2
+        with:
+          bytebase-url: ${{ secrets.BYTEBASE_URL }}
+          service-key: ${{ secrets.BYTEBASE_SERVICE_KEY }}
+          service-secret: ${{ secrets.BYTEBASE_SERVICE_SECRET }}
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            masking/masking-algorithm.json
+            masking/semantic-type.json
+
+      - name: Debug changed files in detail
+        run: |
+          echo "All changed files:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}"
+          echo "Contains masking-algorithm.json: ${{ contains(steps.changed-files.outputs.all_changed_files, 'masking-algorithm.json') }}"
+          echo "Contains semantic-type.json: ${{ contains(steps.changed-files.outputs.all_changed_files, 'semantic-type.json') }}"
+          echo "Raw output:"
+          echo "${{ toJSON(steps.changed-files.outputs) }}"
+
+      - name: Apply masking algorithm
+        id: apply-masking-algorithm
+        if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, 'masking-algorithm.json') }}
+        run: |
+          # Process all masking-algorithm.json files
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "masking-algorithm.json" | while read -r CHANGED_FILE; do
+            echo "Processing: $CHANGED_FILE"
+            
+            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.masking-algorithm" \
+              --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+              --header "Content-Type: application/json" \
+              --data @"$CHANGED_FILE")
+
+            # Extract status code and response body
+            status_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+            echo "Status code: $status_code"
+            echo "Response body: $body"
+            
+            # Append to outputs (with unique identifiers)
+            echo "status_code=${status_code}" >> $GITHUB_OUTPUT
+            echo "${body}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
+              echo "Failed with status code: $status_code"
+              exit 1
+            fi
+          done
+
+      - name: Apply semantic type
+        id: apply-semantic-type
+        if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, '/semantic-type.json') }}
+        run: |
+          # Process all masking-exception.json files
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "semantic-type.json" | while read -r CHANGED_FILE; do
+            echo "Processing: $CHANGED_FILE"
+            
+            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types" \
+              --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+              --header "Content-Type: application/json" \
+              --data @"$CHANGED_FILE")
+            
+            # Extract status code and response body
+            status_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+            
+            echo "Status code: $status_code"
+            echo "Response body: $body"
+            
+            # Append to outputs (with unique identifiers)
+            echo "${body}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
+              echo "Failed with status code: $status_code"
+              exit 1
+            fi
+          done
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        with:
+          script: |
+            const changedFiles = process.env.CHANGED_FILES || '';
+            let commentBody = `### Masking Policy Update Summary\n\n`;
+            
+            // Add status of merge
+            commentBody += `✅ **PR Status:** Merged\n\n`;
+
+            // Add changed files section
+            commentBody += `📝 **Changed Files:**\n\n`;
+            if (changedFiles.trim()) {
+              commentBody += changedFiles.split(' ').map(f => `- ${f}`).join('\n');
+            } else {
+              commentBody += `None`;
+            }
+            commentBody += '\n\n';
+            
+            // Add API calls summary
+            commentBody += `🔄 **API Calls:**\n\n`;
+            let apiCallsFound = false;
+
+            if (changedFiles.includes('masking-algorithm.json')) {
+              const maskingStatuses = Object.keys(${{ toJSON(steps.apply-masking-algorithm.outputs) }} || {})
+                .filter(key => key.startsWith('status_code_'))
+                .map(key => ({
+                  name: key.replace('status_code_', ''),
+                  status: ${{ toJSON(steps.apply-masking-algorithm.outputs) }}[key]
+                }));
+              
+              maskingStatuses.forEach(({name, status}) => {
+                apiCallsFound = true;
+                const success = status >= 200 && status < 300;
+                commentBody += `- Column Masking (${name}): ${success ? '✅' : '❌'} ${status}\n`;
+              });
+            }
+
+            if (changedFiles.includes('semantic-type.json')) {
+              const exceptionStatuses = Object.keys(${{ toJSON(steps.apply-semantic-type.outputs) }} || {})
+                .filter(key => key.startsWith('status_code_'))
+                .map(key => ({
+                  name: key.replace('status_code_', ''),
+                  status: ${{ toJSON(steps.apply-semantic-type.outputs) }}[key]
+                }));
+              
+              exceptionStatuses.forEach(({name, status}) => {
+                apiCallsFound = true;
+                const success = status >= 200 && status < 300;
+                commentBody += `- Masking Exception (${name}): ${success ? '✅' : '❌'} ${status}\n`;
+              });
+            }
+
+            if (!apiCallsFound) {
+              commentBody += `None`;
+            }
+
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: commentBody
+            });
