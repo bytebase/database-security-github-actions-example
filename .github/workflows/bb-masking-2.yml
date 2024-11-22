@@ -36,8 +36,6 @@ jobs:
           files: |
             masking/masking-algorithm.json
             masking/semantic-type.json
-          base_sha: ${{ github.event.pull_request.base.sha }}
-          sha: ${{ github.event.pull_request.head.sha }}
           since_last_remote_commit: true
           fetch_depth: 0
           include_all_old_new_renamed_files: true
@@ -66,7 +64,7 @@ jobs:
           echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "masking-algorithm.json" | while read -r CHANGED_FILE; do
             echo "Processing: $CHANGED_FILE"
             
-            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.masking-algorithm" \
+            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.masking-algorithm?allow_missing=true" \
               --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
               --header "Content-Type: application/json" \
               --data @"$CHANGED_FILE")
@@ -96,7 +94,7 @@ jobs:
           echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "semantic-type.json" | while read -r CHANGED_FILE; do
             echo "Processing: $CHANGED_FILE"
             
-            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types" \
+            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types?allow_missing=true" \
               --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
               --header "Content-Type: application/json" \
               --data @"$CHANGED_FILE")
