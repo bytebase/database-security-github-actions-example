@@ -82,15 +82,15 @@ jobs:
             exit 1
           fi
 
-      - name: Apply semantic type
+      - name: Apply global masking rule
         id: apply-global-masking-rule
         if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, '/global-masking-rule.json') }}
         run: |
-          # Process all masking-exception.json files
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "global-masking-exception.json" | while read -r CHANGED_FILE; do
+          # Process all global-masking-rule.json files
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "global-masking-rule.json" | while read -r CHANGED_FILE; do
             echo "Processing: $CHANGED_FILE"
             
-            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types?allow_missing=true" \
+            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.global-masking-rule?allow_missing=true" \
               --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
               --header "Content-Type: application/json" \
               --data @"$CHANGED_FILE")
