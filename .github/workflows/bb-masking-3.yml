@@ -68,7 +68,7 @@ jobs:
             --header "Content-Type: application/json" \
             --data @"$CHANGED_FILE")
 
-          # Extract status code and response body
+          # Extract status code and response body 
           status_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
           
