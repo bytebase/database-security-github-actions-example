@@ -84,7 +84,7 @@ jobs:
 
       - name: Apply global masking rule
         id: apply-global-masking-rule
-        if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, '/global-masking-rule.json') }}
+        if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, 'global-masking-rule.json') }}
         run: |
           # Process all global-masking-rule.json files
           echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "global-masking-rule.json" | while read -r CHANGED_FILE; do
@@ -103,11 +103,14 @@ jobs:
             echo "Response body: $body"
             
             # Append to outputs (with unique identifiers)
-            echo "${body}" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            
-            if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
+            if [[ $status_code -ge 200 && $status_code -lt 300 ]]; then
+              echo "${body}" >> $GITHUB_OUTPUT
+            else
               echo "Failed with status code: $status_code"
+              echo "Response body: ${body}"
+              if [[ $status_code -eq 403 ]]; then
+                echo "Access denied. Please check your permissions and API token."
+              fi
               exit 1
             fi
           done
