@@ -63,7 +63,7 @@ jobs:
           CHANGED_FILE="masking/data-classification.json"
           echo "Processing: $CHANGED_FILE"
           
-          response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.data-classification?allow_missing=true" \
+          response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.data-classification" \
             --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
             --header "Content-Type: application/json" \
             --data @"$CHANGED_FILE")
