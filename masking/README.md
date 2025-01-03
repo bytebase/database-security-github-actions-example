@@ -2,6 +2,8 @@
 
 Docs: https://www.bytebase.com/docs/security/data-masking/overview/
 
+Tutorials: [Data Masking with GitHub Actions](https://www.bytebase.com/docs/tutorials/github-action-data-masking-part1/)
+
 ## Workspace-level policies and settings
 
 ### Global masking rule
