@@ -1,0 +1,4 @@
+project = "sample-project"
+instance = "prod-sample-instance"
+database = "hr_prod"
+format = "CSV"  # Optional, defaults to "JSON" if not specified
