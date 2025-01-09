@@ -71,31 +71,33 @@ jobs:
             return 0
           }
 
-          # Process each SQL file
+          # Find the manifest.toml once at the start
+          MANIFEST_PATH=""
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "Processing $file"
-            
-            # Find and parse manifest.toml
             DIR_PATH=$(dirname "$file")
-            MANIFEST_PATH=""
             while [[ "$DIR_PATH" == export* ]]; do
               if [[ -f "$DIR_PATH/manifest.toml" ]]; then
                 MANIFEST_PATH="$DIR_PATH/manifest.toml"
-                break
+                break 2  # Break out of both loops once found
               fi
               DIR_PATH=$(dirname "$DIR_PATH")
             done
-            
-            if [[ -z "$MANIFEST_PATH" ]]; then
-              echo "Error: No manifest.toml found for $file"
-              exit 1
-            fi
-            
-            # Parse manifest.toml
-            PROJECT=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['project'])")
-            INSTANCE=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['instance'])")
-            DATABASE=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['database'])")
-            FORMAT=$(python3 -c "import toml; config=toml.load('$MANIFEST_PATH'); print(config.get('format', 'JSON'))")
+          done
+
+          if [[ -z "$MANIFEST_PATH" ]]; then
+            echo "Error: No manifest.toml found in the export directory"
+            exit 1
+          fi
+
+          # Parse manifest.toml once
+          PROJECT=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['project'])")
+          INSTANCE=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['instance'])")
+          DATABASE=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['database'])")
+          FORMAT=$(python3 -c "import toml; config=toml.load('$MANIFEST_PATH'); print(config.get('format', 'JSON'))")
+
+          # Process each SQL file
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "Processing $file"
             
             # Read SQL content and encode to base64
             SQL_CONTENT=$(base64 < "$file")
