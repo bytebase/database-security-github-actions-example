@@ -137,8 +137,11 @@ jobs:
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo "Processing $file"
             SQL_CONTENT=$(base64 < "$file")
+            echo "SQL_CONTENT=$SQL_CONTENT" >> $GITHUB_ENV
             STEP_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
+            echo "STEP_ID=$STEP_ID" >> $GITHUB_ENV
             BASE_URL="${{ steps.bytebase-login.outputs.api_url }}"
+            echo "BASE_URL=$BASE_URL" >> $GITHUB_ENV
 
             sheet_data=$(call_api \
               "$BASE_URL/v1/projects/$PROJECT/sheets" \
