@@ -175,7 +175,7 @@ jobs:
               commentBody += `None`;
             }
             
-            commentBody += '\n\n**Status:** ${process.env.STATUS || 'Completed'}';
+            commentBody += `\n\n**Status:** ${process.env.STATUS || 'Completed'}`;
             
             await github.rest.issues.createComment({
               ...context.repo,
