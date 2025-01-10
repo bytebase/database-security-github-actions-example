@@ -76,17 +76,8 @@ jobs:
               return 1
             fi
             
-            # Validate JSON response
-            if ! python3 << 'EOF'
-import sys, json
-try:
-    with open(sys.argv[1], 'r') as f:
-        json.load(f)
-except json.JSONDecodeError as e:
-    print(f'Invalid JSON: {str(e)}', file=sys.stderr)
-    sys.exit(1)
-EOF
-            "$temp_file" 2>/dev/null; then
+            # Validate JSON response using a simple Python command
+            if ! python3 -c "import json; json.load(open('$temp_file'))" 2>/dev/null; then
               echo "Error: Invalid JSON response"
               rm "$temp_file"
               return 1
