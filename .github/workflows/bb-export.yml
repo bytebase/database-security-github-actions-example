@@ -50,10 +50,12 @@ jobs:
             local data="$3"
             local description="$4"
             
-            echo "Making $description API call..."
+            echo "=== DEBUG: API Call Details ==="
+            echo "Description: $description"
             echo "URL: $url"
             echo "Method: $method"
             echo "Data: $data"
+            echo "==========================="
             
             response=$(curl -s -w "\n%{http_code}" \
               --request "$method" "$url" \
@@ -64,23 +66,20 @@ jobs:
             status_code=$(echo "$response" | tail -n1)
             body=$(echo "$response" | sed '$d')
             
+            echo "=== DEBUG: Parsed Response ==="
             echo "Status code: $status_code"
-            echo "Response body: $body"
+            echo "Body length: ${#body}"
+            echo "Body content:"
+            echo "$body"
+            echo "==========================="
             
             if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
-              echo "Failed $description. Status: $status_code"
-              echo "Response: $body"
+              echo "Error: Failed $description. Status: $status_code"
               return 1
             fi
             
             if [[ -z "$body" ]]; then
-              echo "Empty response body"
-              return 1
-            fi
-            
-            # Validate JSON response
-            if ! echo "$body" | python3 -c "import sys, json; json.load(sys.stdin)" > /dev/null 2>&1; then
-              echo "Invalid JSON response"
+              echo "Error: Empty response body"
               return 1
             fi
             
@@ -95,7 +94,7 @@ jobs:
             while [[ "$DIR_PATH" == export* ]]; do
               if [[ -f "$DIR_PATH/manifest.toml" ]]; then
                 MANIFEST_PATH="$DIR_PATH/manifest.toml"
-                break 2  # Break out of both loops once found
+                break 2
               fi
               DIR_PATH=$(dirname "$DIR_PATH")
             done
@@ -106,11 +105,38 @@ jobs:
             exit 1
           fi
 
-          # Parse manifest.toml once using built-in tomllib
-          PROJECT=$(python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb'))['project'])")
-          INSTANCE=$(python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb'))['instance'])")
-          DATABASE=$(python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb'))['database'])")
-          FORMAT=$(python3 -c "import tomllib; config=tomllib.load(open('$MANIFEST_PATH', 'rb')); print(config.get('format', 'JSON'))")
+          echo "Found manifest file at: $MANIFEST_PATH"
+          echo "Manifest contents:"
+          cat "$MANIFEST_PATH"
+
+          # Parse manifest.toml with error handling
+          read_toml() {
+            local key="$1"
+            python3 -c "
+import sys
+import tomllib
+try:
+    with open('$MANIFEST_PATH', 'rb') as f:
+        data = tomllib.load(f)
+        print(data.get('$key', ''))
+except Exception as e:
+    print(f'Error reading $key: {str(e)}', file=sys.stderr)
+    sys.exit(1)
+"
+          }
+
+          # Read each value with error handling
+          PROJECT=$(read_toml "project") || exit 1
+          INSTANCE=$(read_toml "instance") || exit 1
+          DATABASE=$(read_toml "database") || exit 1
+          FORMAT=$(read_toml "format") || FORMAT="JSON"
+
+          echo "=== Parsed Configuration ==="
+          echo "Project: $PROJECT"
+          echo "Instance: $INSTANCE"
+          echo "Database: $DATABASE"
+          echo "Format: $FORMAT"
+          echo "==========================="
 
           # Process each SQL file
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
