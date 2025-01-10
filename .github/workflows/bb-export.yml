@@ -54,36 +54,45 @@ jobs:
             echo "Description: $description"
             echo "URL: $url"
             echo "Method: $method"
-            echo "Data: $data"
-            echo "==========================="
             
-            response=$(curl -s -w "\n%{http_code}" \
+            # Store response in a temporary file to avoid string manipulation issues
+            local temp_file=$(mktemp)
+            local http_code=$(curl -s -w "%{http_code}" \
               --request "$method" "$url" \
               --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
               --header "Content-Type: application/json" \
-              --data "$data")
+              --data "$data" \
+              -o "$temp_file")
             
-            status_code=$(echo "$response" | tail -n1)
-            body=$(echo "$response" | sed '$d')
-            
-            echo "=== DEBUG: Parsed Response ==="
-            echo "Status code: $status_code"
-            echo "Body length: ${#body}"
-            echo "Body content:"
-            echo "$body"
+            echo "=== DEBUG: Response Details ==="
+            echo "HTTP Status: $http_code"
+            echo "Response body:"
+            cat "$temp_file"
             echo "==========================="
             
-            if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
-              echo "Error: Failed $description. Status: $status_code"
+            if [[ $http_code -lt 200 || $http_code -ge 300 ]]; then
+              echo "Error: Failed $description. Status: $http_code"
+              rm "$temp_file"
               return 1
             fi
             
-            if [[ -z "$body" ]]; then
-              echo "Error: Empty response body"
+            # Validate JSON response
+            if ! python3 -c "
+import sys, json
+try:
+    with open('$temp_file', 'r') as f:
+        json.load(f)
+except json.JSONDecodeError as e:
+    print(f'Invalid JSON: {str(e)}', file=sys.stderr)
+    sys.exit(1)
+" 2>/dev/null; then
+              echo "Error: Invalid JSON response"
+              rm "$temp_file"
               return 1
             fi
             
-            echo "$body"
+            cat "$temp_file"
+            rm "$temp_file"
             return 0
           }
 
