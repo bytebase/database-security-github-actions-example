@@ -43,7 +43,6 @@ jobs:
         id: process-sql
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          # Function to make API calls with error handling
           call_api() {
             local url="$1"
             local method="$2"
@@ -55,7 +54,6 @@ jobs:
             echo "URL: $url"
             echo "Method: $method"
             
-            # Store response in a temporary file
             temp_file=$(mktemp)
             http_code=$(curl -s -w "%{http_code}" \
               --request "$method" "$url" \
@@ -76,19 +74,11 @@ jobs:
               return 1
             fi
             
-            # Validate JSON response using a simple Python command
-            if ! python3 -c "import json; json.load(open('$temp_file'))" 2>/dev/null; then
-              echo "Error: Invalid JSON response"
-              rm "$temp_file"
-              return 1
-            fi
-            
             cat "$temp_file"
             rm "$temp_file"
             return 0
           }
 
-          # Find the manifest.toml once at the start
           MANIFEST_PATH=""
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             DIR_PATH=$(dirname "$file")
@@ -110,23 +100,11 @@ jobs:
           echo "Manifest contents:"
           cat "$MANIFEST_PATH"
 
-          # Parse manifest.toml with error handling
           read_toml() {
             local key="$1"
-            python3 -c "
-import sys
-import tomllib
-try:
-    with open('$MANIFEST_PATH', 'rb') as f:
-        data = tomllib.load(f)
-        print(data.get('$key', ''))
-except Exception as e:
-    print(f'Error reading $key: {str(e)}', file=sys.stderr)
-    sys.exit(1)
-"
+            python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb')).get('$key', ''))"
           }
 
-          # Read each value with error handling
           PROJECT=$(read_toml "project") || exit 1
           INSTANCE=$(read_toml "instance") || exit 1
           DATABASE=$(read_toml "database") || exit 1
@@ -139,56 +117,43 @@ except Exception as e:
           echo "Format: $FORMAT"
           echo "==========================="
 
-          # Process each SQL file
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo "Processing $file"
-            
-            # Read SQL content and encode to base64
             SQL_CONTENT=$(base64 < "$file")
-            
-            # Generate UUID for step ID
             STEP_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
-            
             BASE_URL="${{ steps.bytebase-login.outputs.api_url }}"
-            
-            # 1. Create Sheet
+
             sheet_data=$(call_api \
               "$BASE_URL/v1/projects/$PROJECT/sheets" \
               "POST" \
               "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}" \
-              "Create Sheet") || exit 1
-            
+              "Create Sheet")
+
             SHEET_NAME=$(echo "$sheet_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
-            
-            # 2. Create Plan
+
             plan_data=$(call_api \
               "$BASE_URL/v1/projects/$PROJECT/plans" \
               "POST" \
               "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}" \
-              "Create Plan") || exit 1
-            
+              "Create Plan")
+
             PLAN_NAME=$(echo "$plan_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
-            
-            # 3. Create Issue
+
             issue_data=$(call_api \
               "$BASE_URL/v1/projects/$PROJECT/issues" \
               "POST" \
               "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}" \
-              "Create Issue") || exit 1
-            
-            # 4. Create Rollout
+              "Create Issue")
+
             rollout_data=$(call_api \
               "$BASE_URL/v1/projects/$PROJECT/rollouts" \
               "POST" \
               "{\"plan\":\"$PLAN_NAME\"}" \
-              "Create Rollout") || exit 1
-            
-            # Extract issue link for PR comment
+              "Create Rollout")
+
             ISSUE_NUMBER=$(echo "$issue_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'].split('/')[-1])")
             ISSUE_LINK="${{ secrets.BYTEBASE_URL }}/projects/$PROJECT/issues/$ISSUE_NUMBER"
             echo "ISSUE_LINK=$ISSUE_LINK" >> $GITHUB_ENV
-            
-            echo "Successfully processed $file"
           done
 
       - name: Comment on PR
@@ -210,7 +175,7 @@ except Exception as e:
               commentBody += `None`;
             }
             
-            commentBody += '\n\n**Status:** ${process.env.STATUS || 'Completed'}`;
+            commentBody += '\n\n**Status:** ${process.env.STATUS || 'Completed'}';
             
             await github.rest.issues.createComment({
               ...context.repo,
