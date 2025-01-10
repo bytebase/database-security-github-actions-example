@@ -89,11 +89,11 @@ jobs:
             exit 1
           fi
 
-          # Parse manifest.toml once
-          PROJECT=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['project'])")
-          INSTANCE=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['instance'])")
-          DATABASE=$(python3 -c "import toml; print(toml.load('$MANIFEST_PATH')['database'])")
-          FORMAT=$(python3 -c "import toml; config=toml.load('$MANIFEST_PATH'); print(config.get('format', 'JSON'))")
+          # Parse manifest.toml once using built-in tomllib
+          PROJECT=$(python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb'))['project'])")
+          INSTANCE=$(python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb'))['instance'])")
+          DATABASE=$(python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb'))['database'])")
+          FORMAT=$(python3 -c "import tomllib; config=tomllib.load(open('$MANIFEST_PATH', 'rb')); print(config.get('format', 'JSON'))")
 
           # Process each SQL file
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
