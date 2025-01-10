@@ -122,6 +122,7 @@ jobs:
             STEP_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
             echo "STEP_ID=$STEP_ID" >> $GITHUB_ENV
             BASE_URL="${{ steps.bytebase-login.outputs.api_url }}"
+            echo "BASE_URL111=$BASE_URL"
             echo "BASE_URL=$BASE_URL" >> $GITHUB_ENV
 
             sheet_data=$(call_api \
