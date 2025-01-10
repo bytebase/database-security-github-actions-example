@@ -49,31 +49,50 @@ jobs:
             local data="$3"
             local description="$4"
             
-            echo "Calling API: $description"
+            echo "=== DEBUG: API Call Details ==="
+            echo "Description: $description"
+            echo "URL: $url"
+            echo "Method: $method"
+            echo "Data: $data"
             
-            # Store response in a temporary file
             temp_file=$(mktemp)
-            
-            # Execute curl with minimal output
-            response=$(curl -s \
+            http_code=$(curl -v -s -w "%{http_code}" \
               --request "$method" "$url" \
               --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
               --header "Content-Type: application/json" \
               --data "$data" \
-              --write-out "\n%{http_code}" \
-              2>/dev/null)
+              -o "$temp_file" 2>&1)
             
-            http_code=$(echo "$response" | tail -n1)
-            body=$(echo "$response" | sed '$d')
-            
-            echo "Status code: $http_code"
+            echo "=== DEBUG: Response Details ==="
+            echo "HTTP Status: $http_code"
+            echo "Response body:"
+            cat "$temp_file"
+            echo "==========================="
             
             if [[ $http_code -lt 200 || $http_code -ge 300 ]]; then
-              echo "Error: Failed $description"
-              echo "Response: $body"
+              echo "Error: Failed $description. Status: $http_code"
+              cat "$temp_file"
+              rm "$temp_file"
               return 1
             fi
             
+            if [[ ! -s "$temp_file" ]]; then
+              echo "Error: Empty response from server"
+              rm "$temp_file"
+              return 1
+            fi
+            
+            # Simple one-line JSON validation
+            if ! python3 -c "import json,sys; json.load(open('$temp_file'))" 2>/dev/null; then
+              echo "Error: Invalid JSON response"
+              echo "Response content:"
+              cat "$temp_file"
+              rm "$temp_file"
+              return 1
+            fi
+            
+            cat "$temp_file"
+            rm "$temp_file"
             return 0
           }
 
@@ -117,16 +136,16 @@ jobs:
 
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo "Processing $file"
-            SQL_CONTENT=$(cat "$file" | python3 -c "import sys,base64,json; content=sys.stdin.read(); encoded=base64.b64encode(content.encode()).decode(); print(json.dumps(encoded)[1:-1])")
+            SQL_CONTENT=$(base64 < "$file")
             echo "SQL_CONTENT=$SQL_CONTENT" >> $GITHUB_ENV
             STEP_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
             echo "STEP_ID=$STEP_ID" >> $GITHUB_ENV
             BASE_URL="${{ steps.bytebase-login.outputs.api_url }}"
-            echo "BASE_URL111=$BASE_URL"
+            echo "BASE_URL1111=$BASE_URL"
             echo "BASE_URL=$BASE_URL" >> $GITHUB_ENV
 
             sheet_data=$(call_api \
-              "$BASE_URL/projects/$PROJECT/sheets" \
+              "$BASE_URL/v1/projects/$PROJECT/sheets" \
               "POST" \
               "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}" \
               "Create Sheet")
@@ -134,7 +153,7 @@ jobs:
             SHEET_NAME=$(echo "$sheet_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
 
             plan_data=$(call_api \
-              "$BASE_URL/projects/$PROJECT/plans" \
+              "$BASE_URL/v1/projects/$PROJECT/plans" \
               "POST" \
               "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}" \
               "Create Plan")
@@ -142,13 +161,13 @@ jobs:
             PLAN_NAME=$(echo "$plan_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
 
             issue_data=$(call_api \
-              "$BASE_URL/projects/$PROJECT/issues" \
+              "$BASE_URL/v1/projects/$PROJECT/issues" \
               "POST" \
               "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}" \
               "Create Issue")
 
             rollout_data=$(call_api \
-              "$BASE_URL/projects/$PROJECT/rollouts" \
+              "$BASE_URL/v1/projects/$PROJECT/rollouts" \
               "POST" \
               "{\"plan\":\"$PLAN_NAME\"}" \
               "Create Rollout")
