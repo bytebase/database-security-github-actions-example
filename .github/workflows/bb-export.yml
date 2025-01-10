@@ -55,9 +55,9 @@ jobs:
             echo "URL: $url"
             echo "Method: $method"
             
-            # Store response in a temporary file to avoid string manipulation issues
-            local temp_file=$(mktemp)
-            local http_code=$(curl -s -w "%{http_code}" \
+            # Store response in a temporary file
+            temp_file=$(mktemp)
+            http_code=$(curl -s -w "%{http_code}" \
               --request "$method" "$url" \
               --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
               --header "Content-Type: application/json" \
@@ -77,15 +77,16 @@ jobs:
             fi
             
             # Validate JSON response
-            if ! python3 -c "
+            if ! python3 << 'EOF'
 import sys, json
 try:
-    with open('$temp_file', 'r') as f:
+    with open(sys.argv[1], 'r') as f:
         json.load(f)
 except json.JSONDecodeError as e:
     print(f'Invalid JSON: {str(e)}', file=sys.stderr)
     sys.exit(1)
-" 2>/dev/null; then
+EOF
+            "$temp_file" 2>/dev/null; then
               echo "Error: Invalid JSON response"
               rm "$temp_file"
               return 1
