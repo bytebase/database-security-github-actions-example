@@ -145,7 +145,7 @@ jobs:
             echo "BASE_URL=$BASE_URL" >> $GITHUB_ENV
 
             sheet_data=$(call_api \
-              "$BASE_URL/v1/projects/$PROJECT/sheets" \
+              "$BASE_URL/projects/$PROJECT/sheets" \
               "POST" \
               "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}" \
               "Create Sheet")
@@ -153,7 +153,7 @@ jobs:
             SHEET_NAME=$(echo "$sheet_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
 
             plan_data=$(call_api \
-              "$BASE_URL/v1/projects/$PROJECT/plans" \
+              "$BASE_URL/projects/$PROJECT/plans" \
               "POST" \
               "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}" \
               "Create Plan")
@@ -161,13 +161,13 @@ jobs:
             PLAN_NAME=$(echo "$plan_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
 
             issue_data=$(call_api \
-              "$BASE_URL/v1/projects/$PROJECT/issues" \
+              "$BASE_URL/projects/$PROJECT/issues" \
               "POST" \
               "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}" \
               "Create Issue")
 
             rollout_data=$(call_api \
-              "$BASE_URL/v1/projects/$PROJECT/rollouts" \
+              "$BASE_URL/projects/$PROJECT/rollouts" \
               "POST" \
               "{\"plan\":\"$PLAN_NAME\"}" \
               "Create Rollout")
