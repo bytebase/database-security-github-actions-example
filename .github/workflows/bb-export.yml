@@ -51,6 +51,10 @@ jobs:
             local description="$4"
             
             echo "Making $description API call..."
+            echo "URL: $url"
+            echo "Method: $method"
+            echo "Data: $data"
+            
             response=$(curl -s -w "\n%{http_code}" \
               --request "$method" "$url" \
               --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
@@ -61,9 +65,22 @@ jobs:
             body=$(echo "$response" | sed '$d')
             
             echo "Status code: $status_code"
+            echo "Response body: $body"
+            
             if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
               echo "Failed $description. Status: $status_code"
               echo "Response: $body"
+              return 1
+            fi
+            
+            if [[ -z "$body" ]]; then
+              echo "Empty response body"
+              return 1
+            fi
+            
+            # Validate JSON response
+            if ! echo "$body" | python3 -c "import sys, json; json.load(sys.stdin)" > /dev/null 2>&1; then
+              echo "Invalid JSON response"
               return 1
             fi
             
