@@ -53,14 +53,15 @@ jobs:
             echo "Description: $description"
             echo "URL: $url"
             echo "Method: $method"
+            echo "Data: $data"
             
             temp_file=$(mktemp)
-            http_code=$(curl -s -w "%{http_code}" \
+            http_code=$(curl -v -s -w "%{http_code}" \
               --request "$method" "$url" \
               --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
               --header "Content-Type: application/json" \
               --data "$data" \
-              -o "$temp_file")
+              -o "$temp_file" 2>&1)
             
             echo "=== DEBUG: Response Details ==="
             echo "HTTP Status: $http_code"
@@ -70,6 +71,22 @@ jobs:
             
             if [[ $http_code -lt 200 || $http_code -ge 300 ]]; then
               echo "Error: Failed $description. Status: $http_code"
+              cat "$temp_file"
+              rm "$temp_file"
+              return 1
+            fi
+            
+            if [[ ! -s "$temp_file" ]]; then
+              echo "Error: Empty response from server"
+              rm "$temp_file"
+              return 1
+            fi
+            
+            # Simple one-line JSON validation
+            if ! python3 -c "import json,sys; json.load(open('$temp_file'))" 2>/dev/null; then
+              echo "Error: Invalid JSON response"
+              echo "Response content:"
+              cat "$temp_file"
               rm "$temp_file"
               return 1
             fi
