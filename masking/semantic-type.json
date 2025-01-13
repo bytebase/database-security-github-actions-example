@@ -4,11 +4,40 @@
     "semanticTypeSettingValue": {
       "types": [
         {
+          "id": "bb.default",
+          "title": "Default",
+          "description": "Default semantic type for full masking"
+        },
+        {
+          "id": "bb.default-partial",
+          "title": "Default Partial",
+          "description": "Default semantic for partial masking"
+        },
+        {
           "id": "e8d3fd41-eba0-4afd-ae0f-32c91a4ee710",
-          "title": "semantic-type-001",
-          "description": "",
-          "partialMaskAlgorithmId": "9347822e-5a4a-4797-85ed-a59bb3115622",
-          "fullMaskAlgorithmId": ""
+          "title": "Personal sensitive data",
+          "description": "Custom semantic type with full masking for personal sensitive data",
+          "algorithm": {
+            "fullMask": {
+              "substitution": "***"
+            }
+          }
+        },
+        {
+          "id": "38b31ac4-b90d-44ac-b42a-19d9c76c83ea",
+          "title": "Location",
+          "description": "Custom semantic type with range masking for location",
+          "algorithm": {
+            "rangeMask": {
+              "slices": [
+                {
+                  "start": 0,
+                  "end": 4,
+                  "substitution": "*"
+                }
+              ]
+            }
+          }
         }
       ]
     }
