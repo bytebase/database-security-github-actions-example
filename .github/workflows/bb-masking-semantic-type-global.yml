@@ -84,7 +84,7 @@ jobs:
 
       - name: Apply global masking rule
         id: apply-global-masking-rule
-        if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, '/global-masking-rule.json') }}
+        if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, 'global-masking-rule.json') }}
         run: |
           # Process all global-masking-rule.json files
           echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "global-masking-rule.json" | while read -r CHANGED_FILE; do
@@ -138,14 +138,14 @@ jobs:
             let apiCallsFound = false;
 
             if (changedFiles.includes('semantic-type.json')) {
-              const exceptionStatuses = Object.keys(${{ toJSON(steps.apply-semantic-type.outputs) }} || {})
+              const semanticTypeStatuses = Object.keys(${{ toJSON(steps.apply-semantic-type.outputs) }} || {})
                 .filter(key => key.startsWith('status_code_'))
                 .map(key => ({
                   name: key.replace('status_code_', ''),
                   status: ${{ toJSON(steps.apply-semantic-type.outputs) }}[key]
                 }));
               
-              exceptionStatuses.forEach(({name, status}) => {
+              semanticTypeStatuses.forEach(({name, status}) => {
                 apiCallsFound = true;
                 const success = status >= 200 && status < 300;
                 commentBody += `- Semantic Type (${name}): ${success ? '✅' : '❌'} ${status}\n`;
