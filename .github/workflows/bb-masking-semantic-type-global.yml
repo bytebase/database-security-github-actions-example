@@ -78,7 +78,7 @@ jobs:
           echo "File content:"
           cat "$CHANGED_FILE"
           
-          response=$(curl -v -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types" \
+          response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types" \
             --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
             --header "Content-Type: application/json" \
             --data @"$CHANGED_FILE")
