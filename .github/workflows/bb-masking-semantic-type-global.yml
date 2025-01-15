@@ -84,7 +84,7 @@ jobs:
 
       - name: Apply global masking rule
         id: apply-global-masking-rule
-        if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, '/global-masking-rule.json') }}
+        if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, 'global-masking-rule.json') }}
         run: |
           # Process all global-masking-rule.json files
           echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "global-masking-rule.json" | while read -r CHANGED_FILE; do
