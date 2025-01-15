@@ -25,6 +25,6 @@ jobs:
 
       - name: List projects
         run: |
-          curl "${{ steps.bytebase-login.outputs.api_url }}/projects" \
+          curl "${{steps.bytebase-login.outputs.api_url}}/projects" \
             -H "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
             -H 'Content-Type: application/json; charset=utf-8'
