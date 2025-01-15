@@ -62,7 +62,8 @@ jobs:
         run: |
           CHANGED_FILE="masking/semantic-type.json"
           echo "Processing: $CHANGED_FILE"
-          echo "${{ steps.bytebase-login.outputs.token }}"
+          echo "token: ${{ steps.bytebase-login.outputs.token }}"
+          echo "api_url: ${{ steps.bytebase-login.outputs.api_url }}"
           
           response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types" \
             --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
@@ -91,7 +92,8 @@ jobs:
         run: |
           CHANGED_FILE="masking/global-masking-rule.json"     
           echo "Processing: $CHANGED_FILE"
-          echo "${{ steps.bytebase-login.outputs.token }}"
+          echo "token: ${{ steps.bytebase-login.outputs.token }}"
+          echo "api_url: ${{ steps.bytebase-login.outputs.api_url }}"
           
           response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/policies/masking_rule?allow_missing=true&update_mask=payload" \
             --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
