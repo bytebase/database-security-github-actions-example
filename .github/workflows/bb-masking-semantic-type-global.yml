@@ -76,11 +76,6 @@ jobs:
           status_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
           
-          echo "status_code=${status_code}" >> $GITHUB_OUTPUT
-          echo "response_body<<EOF" >> $GITHUB_OUTPUT
-          echo "${body}" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
           echo "status_code=${status_code}"
           echo "response_body=${body}"
           
