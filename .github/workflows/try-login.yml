@@ -17,8 +17,12 @@ jobs:
           bytebase-url: ${{ secrets.BYTEBASE_URL }}
           service-key: ${{ secrets.BYTEBASE_SERVICE_KEY }}
           service-secret: ${{ secrets.BYTEBASE_SERVICE_SECRET }}
+      - name: Debug API URL
+        run: |
+          echo "API URL Length: ${#${{ steps.bytebase-login.outputs.api_url }}}"
+          echo "Token Length: ${#${{ steps.bytebase-login.outputs.token }}}"
       - name: List projects
         run: |
-          curl "${{ steps.bytebase-login.outputs.api_url }}/projects" \
+          curl "${{ steps.bytebase-login.outputs.api_url }}/v1/projects" \
             -H "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
             -H 'Content-Type: application/json; charset=utf-8'
