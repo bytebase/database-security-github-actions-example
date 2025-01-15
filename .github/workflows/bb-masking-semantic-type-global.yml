@@ -29,6 +29,11 @@ jobs:
           service-key: ${{ secrets.BYTEBASE_SERVICE_KEY }}
           service-secret: ${{ secrets.BYTEBASE_SERVICE_SECRET }}
 
+      - name: Debug Bytebase Login Outputs
+        run: |
+          echo "Bytebase Login Outputs:"
+          echo "${{ toJSON(steps.bytebase-login.outputs) }}"
+
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@v42
@@ -62,8 +67,6 @@ jobs:
         run: |
           CHANGED_FILE="masking/semantic-type.json"
           echo "Processing: $CHANGED_FILE"
-          echo "token: ${{ steps.bytebase-login.outputs.token }}"
-          echo "api_url: ${{ steps.bytebase-login.outputs.api_url }}"
           
           response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types" \
             --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
@@ -92,8 +95,6 @@ jobs:
         run: |
           CHANGED_FILE="masking/global-masking-rule.json"     
           echo "Processing: $CHANGED_FILE"
-          echo "token: ${{ steps.bytebase-login.outputs.token }}"
-          echo "api_url: ${{ steps.bytebase-login.outputs.api_url }}"
           
           response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/policies/masking_rule?allow_missing=true&update_mask=payload" \
             --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
