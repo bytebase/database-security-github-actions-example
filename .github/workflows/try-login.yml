@@ -19,7 +19,6 @@ jobs:
           service-secret: ${{ secrets.BYTEBASE_SERVICE_SECRET }}
       - name: List projects
         run: |
-          set -x
-          curl "${{ steps.bytebase-login.outputs.api_url }}/projects" \
-            -H 'Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}' \
+          curl "${steps.bytebase-login.outputs.api_url}/v1/projects" \
+            -H "Authorization: Bearer ${steps.bytebase-login.outputs.token}" \
             -H 'Content-Type: application/json; charset=utf-8'
