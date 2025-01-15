@@ -93,15 +93,13 @@ jobs:
             --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
             --header "Content-Type: application/json" \
             --data @"$CHANGED_FILE")
-            
+
           # Extract status code and response body
           status_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
           
-          echo "Status code: $status_code"
-          echo "Response body: $body"
-          
-          # Append to outputs (with unique identifiers)
+          echo "status_code=${status_code}" >> $GITHUB_OUTPUT
+          echo "response_body<<EOF" >> $GITHUB_OUTPUT
           echo "${body}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           
