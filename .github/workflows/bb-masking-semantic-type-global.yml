@@ -86,31 +86,29 @@ jobs:
         id: apply-global-masking-rule
         if: ${{ steps.changed-files.outputs.any_changed == 'true' && contains(steps.changed-files.outputs.all_changed_files, 'global-masking-rule.json') }}
         run: |
-          # Process all global-masking-rule.json files
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep "global-masking-rule.json" | while read -r CHANGED_FILE; do
-            echo "Processing: $CHANGED_FILE"
+          CHANGED_FILE="masking/global-masking-rule.json"
+          echo "Processing: $CHANGED_FILE"
+          
+          response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/policies/masking_rule?allow_missing=true&update_mask=payload" \
+            --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+            --header "Content-Type: application/json" \
+            --data @"$CHANGED_FILE")
             
-            response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/policies/masking_rule?allow_missing=true&update_mask=payload" \
-              --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
-              --header "Content-Type: application/json" \
-              --data @"$CHANGED_FILE")
-            
-            # Extract status code and response body
-            status_code=$(echo "$response" | tail -n1)
-            body=$(echo "$response" | sed '$d')
-            
-            echo "Status code: $status_code"
-            echo "Response body: $body"
-            
-            # Append to outputs (with unique identifiers)
-            echo "${body}" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            
-            if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
-              echo "Failed with status code: $status_code"
-              exit 1
-            fi
-          done
+          # Extract status code and response body
+          status_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Status code: $status_code"
+          echo "Response body: $body"
+          
+          # Append to outputs (with unique identifiers)
+          echo "${body}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
+            echo "Failed with status code: $status_code"
+            exit 1
+          fi
 
       - name: Comment on PR
         uses: actions/github-script@v7
@@ -138,19 +136,13 @@ jobs:
             let apiCallsFound = false;
 
             if (changedFiles.includes('semantic-type.json')) {
-              const semanticTypeStatuses = Object.keys(${{ toJSON(steps.apply-semantic-type.outputs) }} || {})
-                .filter(key => key.startsWith('status_code_'))
-                .map(key => ({
-                  name: key.replace('status_code_', ''),
-                  status: ${{ toJSON(steps.apply-semantic-type.outputs) }}[key]
-                }));
-              
-              semanticTypeStatuses.forEach(({name, status}) => {
+              const status = ${{ toJSON(steps.apply-semantic-type.outputs) }}.status_code;
+              if (status) {
                 apiCallsFound = true;
                 const success = status >= 200 && status < 300;
-                commentBody += `- Semantic Type (${name}): ${success ? '✅' : '❌'} ${status}\n`;
-              });
-            }
+                commentBody += `- Semantic Type: ${success ? '✅' : '❌'} ${status}\n`;
+              }
+            }            
 
             if (changedFiles.includes('global-masking-rule.json')) {
               const status = ${{ toJSON(steps.apply-global-masking-rule.outputs) }}.status_code;
