@@ -34,8 +34,8 @@ jobs:
         uses: tj-actions/changed-files@v42
         with:
           files: |
-            masking/masking-algorithm.json
             masking/semantic-type.json
+            masking/global-masking-rule.json
           since_last_remote_commit: true
           fetch_depth: 0
           include_all_old_new_renamed_files: true
@@ -160,6 +160,7 @@ jobs:
                 commentBody += `- Global Masking Rule: ${success ? '✅' : '❌'} ${status}\n`;
               }
             }
+              
             if (!apiCallsFound) {
               commentBody += `None`;
             }
