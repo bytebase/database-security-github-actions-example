@@ -68,19 +68,37 @@ jobs:
           CHANGED_FILE="masking/semantic-type.json"
           echo "Processing: $CHANGED_FILE"
           
-          response=$(curl -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types" \
+          # Check if file exists
+          if [ ! -f "$CHANGED_FILE" ]; then
+            echo "Error: $CHANGED_FILE does not exist"
+            exit 1
+          fi
+          
+          # Print file content for debugging
+          echo "File content:"
+          cat "$CHANGED_FILE"
+          
+          response=$(curl -v -s -w "\n%{http_code}" --request PATCH "${{ steps.bytebase-login.outputs.api_url }}/settings/bb.workspace.semantic-types" \
             --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+            --header "Content-Type: application/json" \
             --data @"$CHANGED_FILE")
 
           # Extract status code and response body
           status_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
           
-          echo "status_code=${status_code}"
-          echo "response_body=${body}"
+          # Save outputs for GitHub Actions
+          echo "status_code=${status_code}" >> $GITHUB_OUTPUT
+          echo "response_body<<EOF" >> $GITHUB_OUTPUT
+          echo "${body}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          echo "Status Code: ${status_code}"
+          echo "Response Body: ${body}"
           
           if [[ $status_code -lt 200 || $status_code -ge 300 ]]; then
             echo "Failed with status code: $status_code"
+            echo "Response body: ${body}"
             exit 1
           fi
 
