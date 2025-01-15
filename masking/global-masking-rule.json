@@ -7,7 +7,7 @@
       {
         "id": "76356d81-6231-4128-9be7-2c549fc505f5",
         "condition": {
-          "expression": "classification_level in [\"2\"]",
+          "expression": "classification_level in [\"2\", \"3\"]",
           "title": "",
           "description": ""
         },
