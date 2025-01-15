@@ -8,7 +8,7 @@
         "id": "76356d81-6231-4128-9be7-2c549fc505f5",
         "condition": {
           "expression": "classification_level in [\"2\", \"3\"]",
-          "title": "",
+          "title": "x",
           "description": ""
         },
         "semanticType": "bb.default-partial"
@@ -17,7 +17,7 @@
         "id": "1ddc47c9-6ab6-4760-accd-947bc1a5f155",
         "condition": {
           "expression": "classification_level in [\"4\"]",
-          "title": "",
+          "title": "x",
           "description": ""
         },
         "semanticType": "bb.default"
