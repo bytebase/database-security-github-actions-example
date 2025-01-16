@@ -46,10 +46,10 @@ curl --request PATCH ${bytebase_url}/v1/settings/bb.workspace.data-classificatio
 
 Project-level masking exception to overrule the workspace-level setting.
 
-https://github.com/bytebase/api-example/tree/main/data-security/masking/projects/project-sample
+https://github.com/bytebase/database-security-github-actions-example/tree/main/masking/projects/project-sample
 
 ## Schema configuration
 
 Configure metadata such as masking level, classification, semantic type at the table/column level.
 
-https://github.com/bytebase/api-example/tree/main/data-security/masking/databases
+https://github.com/bytebase/database-security-github-actions-example/tree/main/masking/databases
