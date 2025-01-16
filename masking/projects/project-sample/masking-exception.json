@@ -5,7 +5,7 @@
     "maskingExceptions": [
       {
         "action": "EXPORT",
-        "member": "user:dev@x.com",
+        "member": "user:dev@example.com",
         "condition": {
           "expression": "resource.instance_id == \"prod-sample-instance\" && resource.database_name == \"hr_prod\" && resource.schema_name == \"public\" && resource.table_name == \"salary\" && resource.column_name == \"amount\"",
           "title": "",
@@ -14,7 +14,7 @@
       },
       {
         "action": "QUERY",
-        "member": "user:dev2@x.com",
+        "member": "user:dev2@example.com",
         "condition": {
           "expression": "resource.instance_id == \"prod-sample-instance\" && resource.database_name == \"hr_prod\" && resource.schema_name == \"public\" && resource.table_name == \"salary\" && resource.column_name == \"amount\"",
           "title": "",
@@ -23,7 +23,7 @@
       },
       {
         "action": "QUERY",
-        "member": "group:contractor@x.com",
+        "member": "group:contractor@example.com",
         "condition": {
           "expression": "resource.instance_id == \"prod-sample-instance\" && resource.database_name == \"hr_prod\" && resource.schema_name == \"public\" && resource.table_name == \"salary\" && resource.column_name == \"amount\"",
           "title": "",
