@@ -130,7 +130,7 @@ jobs:
         with:
           script: |
             const changedFiles = process.env.CHANGED_FILES || '';
-            let commentBody = `### Masking Policy Update Summary\n\n`;
+            let commentBody = `### Update Column Masking and Exception Summary\n\n`;
             
             // Add status of merge
             commentBody += `✅ **PR Status:** Merged\n\n`;
