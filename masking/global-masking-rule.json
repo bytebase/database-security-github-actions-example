@@ -12,6 +12,15 @@
           "description": ""
         },
         "semanticType": "bb.default-partial"
+      },
+      {
+        "id": "1ddc47c9-6ab6-4760-accd-947bc1a5f155",
+        "condition": {
+          "expression": "classification_level in [\"4\"]",
+          "title": "",
+          "description": ""
+        },
+        "semanticType": "bb.default"
       }
     ]
   },
