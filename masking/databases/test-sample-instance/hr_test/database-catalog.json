@@ -2,7 +2,7 @@
   "name": "instances/test-sample-instance/databases/hr_test/catalog",
   "schemas": [
     {
-      "name": "",
+      "name": "public",
       "tables": [
         {
           "name": "salary",
