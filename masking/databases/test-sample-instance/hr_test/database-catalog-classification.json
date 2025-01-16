@@ -1,0 +1,24 @@
+{
+  "name": "instances/test-sample-instance/databases/hr_test/catalog",
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "salary",
+          "columns": {
+            "columns": [
+              {
+                "name": "amount",
+                "semanticType": "bb.default",
+                "labels": {},
+                "classification": ""
+              }
+            ]
+          },
+          "classification": "2-2"
+        }
+      ]
+    }
+  ]
+}
