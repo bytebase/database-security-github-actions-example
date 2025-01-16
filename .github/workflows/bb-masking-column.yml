@@ -1,4 +1,4 @@
-name: Bytebase Masking Policy Update
+name: Bytebase Masking Policy Update Column and Exception
 on:
   pull_request:
     types: [closed]
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  bytebase-masking-1:
+  bytebase-masking-column-and-exception:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:

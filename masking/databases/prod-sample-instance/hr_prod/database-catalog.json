@@ -1,8 +1,8 @@
 {
-  "name": "instances/prod-sample-instance/databases/hr_test/catalog",
+  "name": "instances/prod-sample-instance/databases/hr_prod/catalog",
   "schemas": [
     {
-      "name": "",
+      "name": "public",
       "tables": [
         {
           "name": "salary",
@@ -16,7 +16,7 @@
               }
             ]
           },
-          "classification": "2-2"
+          "classification": ""
         }
       ]
     }
