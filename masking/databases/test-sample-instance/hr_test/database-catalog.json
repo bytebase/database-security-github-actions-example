@@ -10,7 +10,7 @@
             "columns": [
               {
                 "name": "amount",
-                "semanticType": "bb.default-partial",
+                "semanticType": "bb.default",
                 "labels": {},
                 "classification": ""
               }
