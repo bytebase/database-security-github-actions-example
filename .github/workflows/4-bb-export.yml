@@ -100,6 +100,10 @@ jobs:
               -d "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}")
             
             SHEET_NAME=$(echo "$sheet_response" | jq -r '.name')
+            if [ -z "$SHEET_NAME" ] || [ "$SHEET_NAME" = "null" ]; then
+              echo "Error creating sheet. Response: $sheet_response"
+              exit 1
+            fi
             echo "Sheet created: $SHEET_NAME"
 
             # Create Plan
@@ -109,7 +113,12 @@ jobs:
               -H "Content-Type: application/json" \
               -d "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}")
             
+            echo "Plan response: $plan_response"  # Debug output
             PLAN_NAME=$(echo "$plan_response" | jq -r '.name')
+            if [ -z "$PLAN_NAME" ] || [ "$PLAN_NAME" = "null" ]; then
+              echo "Error creating plan. Response: $plan_response"
+              exit 1
+            fi
             echo "Plan created: $PLAN_NAME"
 
             # Create Issue
@@ -119,6 +128,11 @@ jobs:
               -H "Content-Type: application/json" \
               -d "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}")
             
+            echo "Issue response: $issue_response"  # Debug output
+            if ! echo "$issue_response" | jq -e '.name' > /dev/null; then
+              echo "Error creating issue. Response: $issue_response"
+              exit 1
+            fi
             ISSUE_NUMBER=$(echo "$issue_response" | jq -r '.name | split("/")[-1]')
             ISSUE_LINK="${{ secrets.BYTEBASE_URL }}/projects/$PROJECT/issues/$ISSUE_NUMBER"
             echo "Issue created: $ISSUE_LINK"
@@ -130,6 +144,11 @@ jobs:
               -H "Content-Type: application/json" \
               -d "{\"plan\":\"$PLAN_NAME\"}")
             
+            echo "Rollout response: $rollout_response"  # Debug output
+            if ! echo "$rollout_response" | jq -e '.name' > /dev/null; then
+              echo "Error creating rollout. Response: $rollout_response"
+              exit 1
+            fi
             echo "Rollout created: $(echo "$rollout_response" | jq -r '.name')"
           done
 
