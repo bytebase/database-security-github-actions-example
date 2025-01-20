@@ -64,7 +64,17 @@ jobs:
               -o "$temp_file")
             
             echo "Response (Status $http_code):"
-            cat "$temp_file" | jq '.'
+            echo "Raw response:"
+            cat "$temp_file"
+            
+            # Check if response is valid JSON
+            if jq empty "$temp_file" 2>/dev/null; then
+              echo "Valid JSON response:"
+              cat "$temp_file" | jq '.'
+            else
+              echo "WARNING: Invalid JSON response"
+              cat "$temp_file"
+            fi
             echo "------------------------"
             
             cat "$temp_file"
