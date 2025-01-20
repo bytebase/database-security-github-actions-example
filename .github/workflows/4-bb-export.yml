@@ -46,40 +46,7 @@ jobs:
         id: process-sql
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          call_api() {
-            local url="$1"
-            local method="$2"
-            local data="$3"
-            local description="$4"
-            
-            echo "Calling API: $description"
-            echo "URL: $url"
-            
-            temp_file=$(mktemp)
-            http_code=$(curl -s -w "%{http_code}" \
-              --request "$method" "$url" \
-              --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
-              --header "Content-Type: application/json" \
-              --data "$data" \
-              -o "$temp_file")
-            
-            echo "Response (Status $http_code):"
-            echo "Raw response:"
-            cat "$temp_file"
-            
-            # Check if response is valid JSON
-            if jq empty "$temp_file" 2>/dev/null; then
-              echo "Valid JSON response:"
-              cat "$temp_file" | jq '.'
-            else
-              echo "WARNING: Invalid JSON response"
-              cat "$temp_file"
-            fi
-            echo "------------------------"
-            
-            cat "$temp_file"
-          }
-
+          # Find and read manifest.toml
           MANIFEST_PATH=""
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             DIR_PATH=$(dirname "$file")
@@ -101,6 +68,7 @@ jobs:
           echo "Manifest contents:"
           cat "$MANIFEST_PATH"
 
+          # Parse TOML file
           read_toml() {
             local key="$1"
             python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb')).get('$key', ''))"
@@ -125,44 +93,44 @@ jobs:
             BASE_URL="${{ steps.bytebase-login.outputs.api_url }}"
 
             # Create Sheet
-            sheet_data=$(call_api \
-              "$BASE_URL/projects/$PROJECT/sheets" \
-              "POST" \
-              "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}" \
-              "Create Sheet")
+            echo "Creating sheet..."
+            sheet_response=$(curl -s -X POST "$BASE_URL/projects/$PROJECT/sheets" \
+              -H "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}")
             
-            SHEET_NAME=$(echo "$sheet_data" | jq -r '.name')
-            echo "Sheet name: $SHEET_NAME"
+            SHEET_NAME=$(echo "$sheet_response" | jq -r '.name')
+            echo "Sheet created: $SHEET_NAME"
 
             # Create Plan
-            plan_data=$(call_api \
-              "$BASE_URL/projects/$PROJECT/plans" \
-              "POST" \
-              "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}" \
-              "Create Plan")
+            echo "Creating plan..."
+            plan_response=$(curl -s -X POST "$BASE_URL/projects/$PROJECT/plans" \
+              -H "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}")
             
-            PLAN_NAME=$(echo "$plan_data" | jq -r '.name')
-            echo "Plan name: $PLAN_NAME"
+            PLAN_NAME=$(echo "$plan_response" | jq -r '.name')
+            echo "Plan created: $PLAN_NAME"
 
             # Create Issue
-            issue_data=$(call_api \
-              "$BASE_URL/projects/$PROJECT/issues" \
-              "POST" \
-              "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}" \
-              "Create Issue")
+            echo "Creating issue..."
+            issue_response=$(curl -s -X POST "$BASE_URL/projects/$PROJECT/issues" \
+              -H "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}")
             
-            ISSUE_NUMBER=$(echo "$issue_data" | jq -r '.name | split("/")[-1]')
+            ISSUE_NUMBER=$(echo "$issue_response" | jq -r '.name | split("/")[-1]')
             ISSUE_LINK="${{ secrets.BYTEBASE_URL }}/projects/$PROJECT/issues/$ISSUE_NUMBER"
-            echo "Issue link: $ISSUE_LINK"
+            echo "Issue created: $ISSUE_LINK"
 
             # Create Rollout
-            rollout_data=$(call_api \
-              "$BASE_URL/projects/$PROJECT/rollouts" \
-              "POST" \
-              "{\"plan\":\"$PLAN_NAME\"}" \
-              "Create Rollout")
+            echo "Creating rollout..."
+            rollout_response=$(curl -s -X POST "$BASE_URL/projects/$PROJECT/rollouts" \
+              -H "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"plan\":\"$PLAN_NAME\"}")
             
-            echo "Rollout created: $(echo "$rollout_data" | jq -r '.name')"
+            echo "Rollout created: $(echo "$rollout_response" | jq -r '.name')"
           done
 
       - name: Comment on PR
