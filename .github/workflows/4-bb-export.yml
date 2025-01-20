@@ -82,7 +82,7 @@ jobs:
               return 1
             fi
             
-            # Simple one-line JSON validation
+            # Check if the response is valid JSON
             if ! python3 -c "import json,sys; json.load(open('$temp_file'))" 2>/dev/null; then
               echo "Error: Invalid JSON response"
               echo "Response content:"
