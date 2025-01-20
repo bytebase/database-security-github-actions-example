@@ -39,6 +39,9 @@ jobs:
             export/**/*.sql
           since_last_remote_commit: true
 
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
       - name: Process SQL files
         id: process-sql
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -60,8 +63,10 @@ jobs:
               --data "$data" \
               -o "$temp_file")
             
-            # Return the response regardless of status code
-            # This allows the caller to handle the response
+            echo "Response (Status $http_code):"
+            cat "$temp_file" | jq '.'
+            echo "------------------------"
+            
             cat "$temp_file"
           }
 
@@ -104,68 +109,50 @@ jobs:
           echo "==========================="
 
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "DEBUG: Starting to process file: $file"
+            echo "Processing $file"
             SQL_CONTENT=$(base64 < "$file")
-            echo "DEBUG: SQL content encoded"
             STEP_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
             BASE_URL="${{ steps.bytebase-login.outputs.api_url }}"
-            
-            echo "DEBUG: About to make first API call to create sheet"
-            response=$(call_api \
+
+            # Create Sheet
+            sheet_data=$(call_api \
               "$BASE_URL/projects/$PROJECT/sheets" \
               "POST" \
               "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}" \
               "Create Sheet")
             
-            echo "DEBUG: Raw API Response:"
-            echo "$response"
-            
-            # Option 1: Using grep and cut
-            SHEET_NAME=$(echo "$response" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
-            
-            # Option 2: Using sed
-            # SHEET_NAME=$(echo "$response" | sed -n 's/.*"name":"\([^"]*\)".*/\1/p')
-            
-            # Option 3: Using jq if available
-            # SHEET_NAME=$(echo "$response" | jq -r '.name')
-            
-            echo "DEBUG: Retrieved sheet name: $SHEET_NAME"
+            SHEET_NAME=$(echo "$sheet_data" | jq -r '.name')
+            echo "Sheet name: $SHEET_NAME"
 
-            echo "finishing sheetname ================================================"
-
+            # Create Plan
             plan_data=$(call_api \
               "$BASE_URL/projects/$PROJECT/plans" \
               "POST" \
               "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}" \
               "Create Plan")
+            
+            PLAN_NAME=$(echo "$plan_data" | jq -r '.name')
+            echo "Plan name: $PLAN_NAME"
 
-            echo "finishing plan_data ================================================"
-
-            PLAN_NAME=$(echo "$plan_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
-
-            echo "finishing plan_name ================================================"
-
+            # Create Issue
             issue_data=$(call_api \
               "$BASE_URL/projects/$PROJECT/issues" \
               "POST" \
               "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}" \
               "Create Issue")
+            
+            ISSUE_NUMBER=$(echo "$issue_data" | jq -r '.name | split("/")[-1]')
+            ISSUE_LINK="${{ secrets.BYTEBASE_URL }}/projects/$PROJECT/issues/$ISSUE_NUMBER"
+            echo "Issue link: $ISSUE_LINK"
 
-            echo "finishing issue_data ================================================"
-
+            # Create Rollout
             rollout_data=$(call_api \
               "$BASE_URL/projects/$PROJECT/rollouts" \
               "POST" \
               "{\"plan\":\"$PLAN_NAME\"}" \
               "Create Rollout")
-
-            echo "finishing rollout_data ================================================"
-
-            ISSUE_NUMBER=$(echo "$issue_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'].split('/')[-1])")
-            ISSUE_LINK="${{ secrets.BYTEBASE_URL }}/projects/$PROJECT/issues/$ISSUE_NUMBER"
-            echo "ISSUE_LINK=$ISSUE_LINK" >> $GITHUB_ENV
-
-            echo "finishing issue_link ================================================"
+            
+            echo "Rollout created: $(echo "$rollout_data" | jq -r '.name')"
           done
 
       - name: Comment on PR
