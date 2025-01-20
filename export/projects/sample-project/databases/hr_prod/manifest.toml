@@ -1,4 +1,4 @@
-project = "sample-project"
+project = "project-sample"
 instance = "prod-sample-instance"
 database = "hr_prod"
 format = "CSV"  # Optional, defaults to "JSON" if not specified
