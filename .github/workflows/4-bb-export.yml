@@ -1,0 +1,205 @@
+name: Bytebase Export SQL
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - 'export/**'
+  workflow_dispatch:
+
+jobs:
+  bytebase-export:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Login Bytebase
+        id: bytebase-login
+        uses: bytebase/login-action@0.0.2
+        with:
+          bytebase-url: ${{ secrets.BYTEBASE_URL }}
+          service-key: ${{ secrets.BYTEBASE_SERVICE_KEY }}
+          service-secret: ${{ secrets.BYTEBASE_SERVICE_SECRET }}
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            export/**/*.sql
+          since_last_remote_commit: true
+
+      - name: Process SQL files
+        id: process-sql
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          call_api() {
+            local url="$1"
+            local method="$2"
+            local data="$3"
+            local description="$4"
+            
+            echo "=== DEBUG: API Call Details ==="
+            echo "Description: $description"
+            echo "URL: $url"
+            echo "Method: $method"
+            echo "Data: $data"
+            
+            temp_file=$(mktemp)
+            http_code=$(curl -v -s -w "%{http_code}" \
+              --request "$method" "$url" \
+              --header "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
+              --header "Content-Type: application/json" \
+              --data "$data" \
+              -o "$temp_file" 2>&1)
+            
+            echo "=== DEBUG: Response Details ==="
+            echo "HTTP Status: $http_code"
+            echo "Response body:"
+            cat "$temp_file"
+            echo "==========================="
+            
+            if [[ $http_code -lt 200 || $http_code -ge 300 ]]; then
+              echo "Error: Failed $description. Status: $http_code"
+              cat "$temp_file"
+              rm "$temp_file"
+              return 1
+            fi
+            
+            if [[ ! -s "$temp_file" ]]; then
+              echo "Error: Empty response from server"
+              rm "$temp_file"
+              return 1
+            fi
+            
+            # Simple one-line JSON validation
+            if ! python3 -c "import json,sys; json.load(open('$temp_file'))" 2>/dev/null; then
+              echo "Error: Invalid JSON response"
+              echo "Response content:"
+              cat "$temp_file"
+              rm "$temp_file"
+              return 1
+            fi
+            
+            cat "$temp_file"
+            rm "$temp_file"
+            return 0
+          }
+
+          MANIFEST_PATH=""
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            DIR_PATH=$(dirname "$file")
+            while [[ "$DIR_PATH" == export* ]]; do
+              if [[ -f "$DIR_PATH/manifest.toml" ]]; then
+                MANIFEST_PATH="$DIR_PATH/manifest.toml"
+                break 2
+              fi
+              DIR_PATH=$(dirname "$DIR_PATH")
+            done
+          done
+
+          if [[ -z "$MANIFEST_PATH" ]]; then
+            echo "Error: No manifest.toml found in the export directory"
+            exit 1
+          fi
+
+          echo "Found manifest file at: $MANIFEST_PATH"
+          echo "Manifest contents:"
+          cat "$MANIFEST_PATH"
+
+          read_toml() {
+            local key="$1"
+            python3 -c "import tomllib; print(tomllib.load(open('$MANIFEST_PATH', 'rb')).get('$key', ''))"
+          }
+
+          PROJECT=$(read_toml "project") || exit 1
+          INSTANCE=$(read_toml "instance") || exit 1
+          DATABASE=$(read_toml "database") || exit 1
+          FORMAT=$(read_toml "format") || FORMAT="JSON"
+
+          echo "=== Parsed Configuration ==="
+          echo "Project: $PROJECT"
+          echo "Instance: $INSTANCE"
+          echo "Database: $DATABASE"
+          echo "Format: $FORMAT"
+          echo "==========================="
+
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "Processing $file"
+            SQL_CONTENT=$(base64 < "$file")
+            echo "SQL_CONTENT=$SQL_CONTENT" >> $GITHUB_ENV
+            STEP_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
+            echo "STEP_ID=$STEP_ID" >> $GITHUB_ENV
+            BASE_URL="${{ steps.bytebase-login.outputs.api_url }}"
+            echo "BASE_URL1111=$BASE_URL"
+            echo "BASE_URL=$BASE_URL" >> $GITHUB_ENV
+
+            sheet_data=$(call_api \
+              "$BASE_URL/projects/$PROJECT/sheets" \
+              "POST" \
+              "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}" \
+              "Create Sheet")
+
+            SHEET_NAME=$(echo "$sheet_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
+
+            plan_data=$(call_api \
+              "$BASE_URL/projects/$PROJECT/plans" \
+              "POST" \
+              "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}" \
+              "Create Plan")
+
+            PLAN_NAME=$(echo "$plan_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
+
+            issue_data=$(call_api \
+              "$BASE_URL/projects/$PROJECT/issues" \
+              "POST" \
+              "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}" \
+              "Create Issue")
+
+            rollout_data=$(call_api \
+              "$BASE_URL/projects/$PROJECT/rollouts" \
+              "POST" \
+              "{\"plan\":\"$PLAN_NAME\"}" \
+              "Create Rollout")
+
+            ISSUE_NUMBER=$(echo "$issue_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'].split('/')[-1])")
+            ISSUE_LINK="${{ secrets.BYTEBASE_URL }}/projects/$PROJECT/issues/$ISSUE_NUMBER"
+            echo "ISSUE_LINK=$ISSUE_LINK" >> $GITHUB_ENV
+          done
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        if: always()
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        with:
+          script: |
+            const changedFiles = process.env.CHANGED_FILES || '';
+            let commentBody = `### SQL Export Summary\n\n`;
+            
+            commentBody += `✅ **PR Status:** Merged\n\n`;
+            
+            commentBody += `📝 **Processed SQL Files:**\n\n`;
+            if (changedFiles.trim()) {
+              commentBody += changedFiles.split(' ').map(f => `- ${f}`).join('\n');
+            } else {
+              commentBody += `None`;
+            }
+            
+            commentBody += `\n\n**Status:** ${process.env.STATUS || 'Completed'}`;
+            
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: commentBody
+            });
