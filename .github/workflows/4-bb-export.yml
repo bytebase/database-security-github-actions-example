@@ -64,14 +64,9 @@ jobs:
             cat "$temp_file"
             echo "------------------------"
             
-            if [[ $http_code -lt 200 || $http_code -ge 300 ]]; then
-              rm "$temp_file"
-              return 1
-            fi
-            
+            # Return the response regardless of status code
+            # This allows the caller to handle the response
             cat "$temp_file"
-            rm "$temp_file"
-            return 0
           }
 
           MANIFEST_PATH=""
@@ -120,14 +115,23 @@ jobs:
             BASE_URL="${{ steps.bytebase-login.outputs.api_url }}"
             
             echo "DEBUG: About to make first API call to create sheet"
-            sheet_data=$(call_api \
+            response=$(call_api \
               "$BASE_URL/projects/$PROJECT/sheets" \
               "POST" \
               "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}" \
               "Create Sheet")
             
-            echo "DEBUG: After first API call"
-            SHEET_NAME=$(echo "$sheet_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
+            echo "DEBUG: Raw API Response:"
+            echo "$response"
+            
+            # Only try to parse as JSON if we have a response
+            if [ -n "$response" ]; then
+              SHEET_NAME=$(echo "$response" | python3 -c "import sys, json; print(json.load(sys.stdin).get('name', ''))" || echo "")
+              echo "DEBUG: Sheet name: $SHEET_NAME"
+            else
+              echo "ERROR: Empty response from API"
+              exit 1
+            fi
 
             echo "finishing sheetname ================================================"
 
