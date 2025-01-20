@@ -111,7 +111,7 @@ jobs:
             plan_response=$(curl -s -X POST "$BASE_URL/projects/$PROJECT/plans" \
               -H "Authorization: Bearer ${{ steps.bytebase-login.outputs.token }}" \
               -H "Content-Type: application/json" \
-              -d "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}")
+              -d "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}")
             
             echo "Plan response: $plan_response"  # Debug output
             PLAN_NAME=$(echo "$plan_response" | jq -r '.name')
