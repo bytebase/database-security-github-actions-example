@@ -82,7 +82,7 @@ jobs:
               return 1
             fi
             
-            # Check if the response is valid JSON
+            # Simple one-line JSON validation
             if ! python3 -c "import json,sys; json.load(open('$temp_file'))" 2>/dev/null; then
               echo "Error: Invalid JSON response"
               echo "Response content:"
@@ -135,8 +135,9 @@ jobs:
           echo "==========================="
 
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "Processing $file"
+            echo "Processing $file ================================================"
             SQL_CONTENT=$(base64 < "$file")
+            echo "finishing processing $file ======================="
             echo "SQL_CONTENT=$SQL_CONTENT" >> $GITHUB_ENV
             STEP_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
             echo "STEP_ID=$STEP_ID" >> $GITHUB_ENV
@@ -150,7 +151,11 @@ jobs:
               "{\"title\":\"\",\"content\":\"$SQL_CONTENT\",\"type\":\"TYPE_SQL\",\"source\":\"SOURCE_BYTEBASE_ARTIFACT\",\"visibility\":\"VISIBILITY_PUBLIC\"}" \
               "Create Sheet")
 
+            echo "finishing sheetdata ================================================"
+
             SHEET_NAME=$(echo "$sheet_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
+
+            echo "finishing sheetname ================================================"
 
             plan_data=$(call_api \
               "$BASE_URL/projects/$PROJECT/plans" \
@@ -158,7 +163,11 @@ jobs:
               "{\"steps\":[{\"specs\":[{\"id\":\"$STEP_ID\",\"export_data_config\":{\"target\":\"/instances/$INSTANCE/databases/$DATABASE\",\"format\":\"$FORMAT\",\"sheet\":\"$SHEET_NAME\"}}]}],\"title\":\"Export data from $DATABASE\",\"description\":\"EXPORT\"}" \
               "Create Plan")
 
+            echo "finishing plan_data ================================================"
+
             PLAN_NAME=$(echo "$plan_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'])")
+
+            echo "finishing plan_name ================================================"
 
             issue_data=$(call_api \
               "$BASE_URL/projects/$PROJECT/issues" \
@@ -166,15 +175,21 @@ jobs:
               "{\"approvers\":[],\"approvalTemplates\":[],\"subscribers\":[],\"title\":\"Issue: Export data from instances/$INSTANCE/databases/$DATABASE\",\"description\":\"SQL request from GitHub\",\"type\":\"DATABASE_DATA_EXPORT\",\"assignee\":\"\",\"plan\":\"$PLAN_NAME\"}" \
               "Create Issue")
 
+            echo "finishing issue_data ================================================"
+
             rollout_data=$(call_api \
               "$BASE_URL/projects/$PROJECT/rollouts" \
               "POST" \
               "{\"plan\":\"$PLAN_NAME\"}" \
               "Create Rollout")
 
+            echo "finishing rollout_data ================================================"
+
             ISSUE_NUMBER=$(echo "$issue_data" | python3 -c "import sys, json; print(json.load(sys.stdin)['name'].split('/')[-1])")
             ISSUE_LINK="${{ secrets.BYTEBASE_URL }}/projects/$PROJECT/issues/$ISSUE_NUMBER"
             echo "ISSUE_LINK=$ISSUE_LINK" >> $GITHUB_ENV
+
+            echo "finishing issue_link ================================================"
           done
 
       - name: Comment on PR
