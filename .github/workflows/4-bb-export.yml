@@ -60,10 +60,6 @@ jobs:
               --data "$data" \
               -o "$temp_file")
             
-            echo "Response (Status $http_code):"
-            cat "$temp_file"
-            echo "------------------------"
-            
             # Return the response regardless of status code
             # This allows the caller to handle the response
             cat "$temp_file"
