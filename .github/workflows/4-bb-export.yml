@@ -120,14 +120,16 @@ jobs:
             echo "DEBUG: Raw API Response:"
             echo "$response"
             
-            # Only try to parse as JSON if we have a response
-            if [ -n "$response" ]; then
-              SHEET_NAME=$(echo "$response" | python3 -c "import sys, json; print(json.load(sys.stdin).get('name', ''))" || echo "")
-              echo "DEBUG: Sheet name: $SHEET_NAME"
-            else
-              echo "ERROR: Empty response from API"
-              exit 1
-            fi
+            # Option 1: Using grep and cut
+            SHEET_NAME=$(echo "$response" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
+            
+            # Option 2: Using sed
+            # SHEET_NAME=$(echo "$response" | sed -n 's/.*"name":"\([^"]*\)".*/\1/p')
+            
+            # Option 3: Using jq if available
+            # SHEET_NAME=$(echo "$response" | jq -r '.name')
+            
+            echo "DEBUG: Retrieved sheet name: $SHEET_NAME"
 
             echo "finishing sheetname ================================================"
 
